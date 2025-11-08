@@ -37,11 +37,26 @@ jobs:
           role-to-assume: arn:aws:iam::661539128717:role/GitHubOIDC-ECRPushRole
           aws-region: ap-south-1
 
-      # ✅ Save built image for reuse later
+      # ✅ Save built image for later reuse
       - name: 🐳 Save built image as artifact
         run: |
           echo "Saving image ${{ inputs.app_name }}:${{ github.sha }} to image.tar..."
           docker save ${{ inputs.app_name }}:${{ github.sha }} -o image.tar
+
+      # 🧹 Delete existing artifact (avoid 409 Conflict)
+      - name: 🧹 Delete old artifact if exists
+        run: |
+          echo "Checking for existing 'built-image' artifact..."
+          artifacts=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[].name')
+          if echo "$artifacts" | grep -q "^built-image$"; then
+            echo "Existing artifact found. Deleting..."
+            id=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name==\"built-image\") | .id')
+            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+          else
+            echo "No old artifact found."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.personal_token }}
 
       - name: 📦 Upload built image artifact
         uses: actions/upload-artifact@v4
@@ -54,6 +69,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: ⬇️ Download built image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-image
+
+      - name: 🐳 Load image for scanning
+        run: |
+          echo "Loading image for scanning..."
+          docker load -i image.tar
+          docker images
+
       - name: Run Image Scan
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/scan-image@main
         with:
@@ -75,6 +101,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: scan_code
     steps:
+      - name: ⬇️ Download built image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-image
+
+      - name: 🐳 Load image before hardening validation
+        run: |
+          echo "Loading image for hardening checks..."
+          docker load -i image.tar
+          docker images
+
       - name: Run Hardening Check
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/hardening-check@main
         with:
@@ -129,9 +166,9 @@ jobs:
         with:
           name: built-image
 
-      - name: 🐳 Load image back into Docker
+      - name: 🐳 Load image before push
         run: |
-          echo "Loading Docker image..."
+          echo "Loading verified image before push..."
           docker load -i image.tar
           docker images
 
