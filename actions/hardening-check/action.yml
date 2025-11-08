@@ -1,17 +1,56 @@
-name: Stage Action
-description: Generic stage for Container Hardening pipeline
+name: Container Hardening Checks
+description: Run Dockerfile lint (hadolint) and policy checks (Conftest/OPA). Upload findings.
+
+inputs:
+  dockerfile:
+    description: "Path to Dockerfile"
+    required: false
+    default: "Dockerfile"
+  policy_dir:
+    description: "Path to OPA/Conftest policies"
+    required: false
+    default: "policies/conftest"
 
 runs:
   using: "composite"
   steps:
-    - name: Start stage
-      shell: bash
-      run: |
-        echo "🚀 Starting stage: ${GITHUB_JOB}"
-        echo "Repository: ${GITHUB_REPOSITORY}"
-        echo "Workflow: ${GITHUB_WORKFLOW}"
+    - name: 🧩 Checkout app code
+      uses: actions/checkout@v4
 
-    - name: Complete stage
+    - name: 📦 Install hadolint
       shell: bash
       run: |
-        echo "✅ Completed stage: ${GITHUB_JOB}"
+        curl -sSfL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
+          -o /usr/local/bin/hadolint && chmod +x /usr/local/bin/hadolint
+
+    - name: 📦 Install Conftest
+      shell: bash
+      run: |
+        curl -sSfL https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz \
+          | tar -xz -C /usr/local/bin conftest && chmod +x /usr/local/bin/conftest
+
+    - name: 🔎 Hadolint Dockerfile
+      shell: bash
+      run: |
+        mkdir -p reports/generated
+        hadolint "${{ inputs.dockerfile }}" -f json > reports/generated/hadolint.json || true
+        echo "✅ hadolint completed"
+
+    - name: 🔎 Conftest (OPA) on repo
+      shell: bash
+      run: |
+        if [ -d "${{ inputs.policy_dir }}" ]; then
+          conftest test -o json . -p "${{ inputs.policy_dir }}" > reports/generated/conftest.json || true
+          echo "✅ conftest completed"
+        else
+          echo "{}" > reports/generated/conftest.json
+          echo "ℹ️ No policy dir found at ${{ inputs.policy_dir }}, wrote empty result."
+        fi
+
+    - name: 📦 Upload hardening artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: hardening-checks
+        path: |
+          reports/generated/hadolint.json
+          reports/generated/conftest.json

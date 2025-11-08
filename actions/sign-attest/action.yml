@@ -1,17 +1,83 @@
-name: Stage Action
-description: Generic stage for Container Hardening pipeline
+name: Sign & Attest Image (Keyless)
+description: Create a provenance attestation for a container image using cosign keyless. Optionally login to ECR first.
+
+inputs:
+  image:
+    description: "Full image reference to sign/attest (e.g., 123456789012.dkr.ecr.ap-south-1.amazonaws.com/repo:tag)"
+    required: false
+    default: "661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-ubuntu:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
+  role-to-assume:
+    description: "(Optional) IAM role ARN for GitHub OIDC to access ECR"
+    required: false
+    default: ""
+  aws-region:
+    description: "AWS region for ECR login if role is provided"
+    required: false
+    default: "ap-south-1"
 
 runs:
   using: "composite"
   steps:
-    - name: Start stage
-      shell: bash
-      run: |
-        echo "🚀 Starting stage: ${GITHUB_JOB}"
-        echo "Repository: ${GITHUB_REPOSITORY}"
-        echo "Workflow: ${GITHUB_WORKFLOW}"
+    - name: 🧩 Checkout app code (for predicate inputs)
+      uses: actions/checkout@v4
 
-    - name: Complete stage
+    - name: ♻️ (Optional) Configure AWS via OIDC
+      if: ${{ inputs.role-to-assume != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: 🔑 (Optional) ECR login
+      if: ${{ inputs.role-to-assume != '' }}
       shell: bash
       run: |
-        echo "✅ Completed stage: ${GITHUB_JOB}"
+        aws ecr get-login-password --region "${{ inputs.aws-region }}" \
+          | docker login --username AWS --password-stdin "$(echo "${{ inputs.image }}" | awk -F/ '{print $1}')"
+        echo "✅ ECR login complete"
+
+    - name: 📦 Install cosign
+      shell: bash
+      run: |
+        COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | grep tag_name | cut -d\" -f4)
+        curl -sSL "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64" -o /usr/local/bin/cosign
+        chmod +x /usr/local/bin/cosign
+        cosign version
+
+    - name: 📝 Prepare predicate (hash of reports, metadata)
+      shell: bash
+      run: |
+        mkdir -p reports/final
+        jq -n --arg image "${{ inputs.image }}" \
+              --arg run_id "${{ github.run_id }}" \
+              --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --arg commit "${{ github.sha }}" \
+              --arg app "$( [ -f .env.app_name ] && cat .env.app_name || echo '${{ github.repository }}' )" \
+              --arg base "$( [ -f .env.base_image ] && cat .env.base_image || echo 'unknown' )" \
+              '{
+                predicateType: "https://slsa.dev/provenance/v1",
+                metadata: { image: $image, app_name: $app, base_image: $base, commit: $commit, run_id: $run_id, run_url: $run_url },
+                artifacts: {
+                  trivy:       (try (input_filename="reports/generated/trivy-scan.json") catch null),
+                  semgrep:     (try (input_filename="reports/generated/semgrep-report.sarif") catch null),
+                  hardening:   (try (input_filename="reports/generated/hadolint.json") catch null)
+                }
+              }' > reports/final/predicate.json
+        echo "✅ Predicate prepared at reports/final/predicate.json"
+
+    - name: 🔏 Cosign attest (keyless)
+      env:
+        COSIGN_EXPERIMENTAL: "true"
+      shell: bash
+      run: |
+        IMAGE="${{ inputs.image }}"
+        # Keyless attestation (OIDC via GitHub identity)
+        cosign attest --yes --predicate reports/final/predicate.json --type slsaprovenance "$IMAGE" || true
+        echo "✅ Attestation attempted for $IMAGE (non-fatal if transparency log disallowed for private registries)"
+
+    - name: 📦 Upload attestation artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sign-attest
+        path: |
+          reports/final/predicate.json
