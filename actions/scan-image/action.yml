@@ -1,5 +1,5 @@
-name: ${{ github.workflow }} - ${{ github.job }}
-description: Placeholder for ${{ github.job }} stage in Container Hardening pipeline
+name: Stage Action
+description: Placeholder action for Container Hardening pipeline
 
 runs:
   using: "composite"
