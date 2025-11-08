@@ -69,6 +69,10 @@ jobs:
     steps:
       - name: Run Generate Report
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/generate-report@main
+        with:
+          app_name: ${{ inputs.app_name }}
+          base_image: ${{ inputs.base_image }}
+
 
   notify_issue:
     name: 📣 Notify GitHub Issue

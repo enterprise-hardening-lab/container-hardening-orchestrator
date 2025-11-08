@@ -1,17 +1,43 @@
-name: Stage Action
-description: Generic stage for Container Hardening pipeline
+# Path: actions/generate-report/action.yml
+name: Generate Unified Security Report
+description: Merge Trivy (image) + Semgrep (code) results into a single HTML dashboard and JSON summary
+
+inputs:
+  app_name:
+    description: "Application name"
+    required: true
+  base_image:
+    description: "Base OS image (ubuntu | rhel | amazonlinux)"
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Start stage
-      shell: bash
-      run: |
-        echo "🚀 Starting stage: ${GITHUB_JOB}"
-        echo "Repository: ${GITHUB_REPOSITORY}"
-        echo "Workflow: ${GITHUB_WORKFLOW}"
+    - name: 🧩 Checkout
+      uses: actions/checkout@v4
 
-    - name: Complete stage
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
+    - name: 📄 Pass inputs to script
       shell: bash
       run: |
-        echo "✅ Completed stage: ${GITHUB_JOB}"
+        mkdir -p reports/generated reports/final orchestrator
+        echo "${{ inputs.app_name }}" > .env.app_name
+        echo "${{ inputs.base_image }}" > .env.base_image
+
+    - name: 🧰 Generate HTML Dashboard
+      shell: bash
+      run: |
+        chmod +x orchestrator/generate_html_report.py || true
+        python3 orchestrator/generate_html_report.py
+
+    - name: 📦 Upload Security Dashboard (HTML + JSON)
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-dashboard
+        path: |
+          reports/final/security-summary.html
+          reports/final/security-summary.json
