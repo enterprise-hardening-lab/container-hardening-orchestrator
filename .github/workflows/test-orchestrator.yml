@@ -5,7 +5,7 @@ on:
 
 jobs:
   test-sequence:
-    uses: ./.github/workflows/orchestrator.yml
+    uses: enterprise-hardening-lab/container-hardening-orchestrator/.github/workflows/orchestrator.yml@main
     with:
       app_name: "demo-service"
       base_image: "ubuntu"
