@@ -13,34 +13,55 @@ on:
 jobs:
   build:
     name: 🏗️ Build Container Image
-    uses: ./actions/build/action.yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run build action
+        uses: ./actions/build
 
   scan_image:
     name: 🔍 Scan Image
+    runs-on: ubuntu-latest
     needs: build
-    uses: ./actions/scan-image/action.yml
+    steps:
+      - name: Run scan-image action
+        uses: ./actions/scan-image
 
   scan_code:
     name: 🧪 Code Scan
+    runs-on: ubuntu-latest
     needs: scan_image
-    uses: ./actions/scan-code/action.yml
+    steps:
+      - name: Run scan-code action
+        uses: ./actions/scan-code
 
   hardening_check:
     name: 🧰 Hardening Check
+    runs-on: ubuntu-latest
     needs: scan_code
-    uses: ./actions/hardening-check/action.yml
+    steps:
+      - name: Run hardening-check action
+        uses: ./actions/hardening-check
 
   sign_attest:
     name: 🔏 Sign & Attest
+    runs-on: ubuntu-latest
     needs: hardening_check
-    uses: ./actions/sign-attest/action.yml
+    steps:
+      - name: Run sign-attest action
+        uses: ./actions/sign-attest
 
   generate_report:
     name: 🧾 Generate HTML Report
+    runs-on: ubuntu-latest
     needs: sign_attest
-    uses: ./actions/generate-report/action.yml
+    steps:
+      - name: Run generate-report action
+        uses: ./actions/generate-report
 
   notify_issue:
     name: 📣 Notify via GitHub Issue
+    runs-on: ubuntu-latest
     needs: generate_report
-    uses: ./actions/notify-issue/action.yml
+    steps:
+      - name: Run notify-issue action
+        uses: ./actions/notify-issue
