@@ -1,13 +1,13 @@
 name: Stage Action
-description: Placeholder action for Container Hardening pipeline
+description: Generic stage for Container Hardening pipeline
 
 runs:
   using: "composite"
   steps:
-    - name: Echo Stage Start
+    - name: Start Stage
       shell: bash
-      run: echo "🚀 Running stage: ${{ github.job }}"
+      run: echo "🚀 Starting stage: ${GITHUB_JOB}"
 
-    - name: Placeholder
+    - name: Complete Stage
       shell: bash
-      run: echo "✅ Completed ${{ github.job }} stage (logic to be added later)"
+      run: echo "✅ Completed stage: ${GITHUB_JOB}"
