@@ -1,4 +1,3 @@
-# Path: actions/generate-report/action.yml
 name: Generate Unified Security Report
 description: Merge Trivy (image) + Semgrep (code) results into a single HTML dashboard and JSON summary
 
@@ -13,26 +12,29 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: 🧩 Checkout
+    - name: 🧩 Checkout orchestrator repo
       uses: actions/checkout@v4
+      with:
+        repository: enterprise-hardening-lab/container-hardening-orchestrator
+        ref: main
+        path: orchestrator_repo
 
     - name: 🐍 Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.x"
 
-    - name: 📄 Pass inputs to script
+    - name: 📄 Prepare environment
       shell: bash
       run: |
-        mkdir -p reports/generated reports/final orchestrator
+        mkdir -p reports/generated reports/final
         echo "${{ inputs.app_name }}" > .env.app_name
         echo "${{ inputs.base_image }}" > .env.base_image
 
     - name: 🧰 Generate HTML Dashboard
       shell: bash
       run: |
-        chmod +x orchestrator/generate_html_report.py || true
-        python3 orchestrator/generate_html_report.py
+        python3 orchestrator_repo/orchestrator/generate_html_report.py
 
     - name: 📦 Upload Security Dashboard (HTML + JSON)
       uses: actions/upload-artifact@v4
