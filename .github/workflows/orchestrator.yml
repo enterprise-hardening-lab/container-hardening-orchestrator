@@ -97,3 +97,25 @@ jobs:
         with:
           app_name: ${{ inputs.app_name }}
           base_image: ${{ inputs.base_image }}
+
+  promote_image:
+    name: 🚀 Promote to Trusted ECR
+    runs-on: ubuntu-latest
+    needs: notify_issue         # ensures all prior stages complete
+    if: success()               # run only if all checks passed
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Run Promote Image Action
+        uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/promote-image@main
+        with:
+          app_name: ${{ inputs.app_name }}
+          image: 661539128717.dkr.ecr.ap-south-1.amazonaws.com/${{ inputs.app_name }}:${{ github.sha }}
+          role-to-assume: arn:aws:iam::661539128717:role/GitHubOIDC-ECRPushRole
+          aws-region: ap-south-1
+          trivy_summary: reports/generated/trivy-scan.json
+          semgrep_summary: reports/generated/semgrep-report.sarif
+          max_critical: 0
+          max_high: 5
+

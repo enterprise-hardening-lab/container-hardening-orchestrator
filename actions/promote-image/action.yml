@@ -1,0 +1,87 @@
+name: Promote Hardened Image
+description: Push image to trusted ECR only if all security checks passed.
+
+inputs:
+  app_name:
+    description: "Application name"
+    required: true
+  image:
+    description: "Source image tag in staging ECR"
+    required: true
+  role-to-assume:
+    description: "AWS IAM role ARN (OIDC)"
+    required: true
+  aws-region:
+    description: "AWS region"
+    required: true
+    default: "ap-south-1"
+  trivy_summary:
+    description: "Path to Trivy scan summary JSON"
+    required: false
+    default: "reports/generated/trivy-scan.json"
+  semgrep_summary:
+    description: "Path to Semgrep summary JSON"
+    required: false
+    default: "reports/generated/semgrep-report.sarif"
+  max_critical:
+    description: "Maximum allowed critical CVEs"
+    required: false
+    default: "0"
+  max_high:
+    description: "Maximum allowed high CVEs"
+    required: false
+    default: "5"
+
+runs:
+  using: "composite"
+  steps:
+    - name: 🧩 Checkout repo
+      uses: actions/checkout@v4
+
+    - name: 🔍 Validate scan thresholds
+      id: validate
+      shell: bash
+      run: |
+        echo "📊 Evaluating security thresholds..."
+        CRIT=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "${{ inputs.trivy_summary }}" 2>/dev/null || echo 0)
+        HIGH=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "${{ inputs.trivy_summary }}" 2>/dev/null || echo 0)
+
+        echo "Found CRITICAL=$CRIT, HIGH=$HIGH"
+        if [ "$CRIT" -gt "${{ inputs.max_critical }}" ] || [ "$HIGH" -gt "${{ inputs.max_high }}" ]; then
+          echo "❌ Security threshold breached (Critical=$CRIT, High=$HIGH)."
+          echo "pass=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        echo "✅ Security thresholds passed."
+        echo "pass=true" >> $GITHUB_OUTPUT
+
+    - name: 🔑 Configure AWS OIDC
+      if: ${{ steps.validate.outputs.pass == 'true' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: 📦 Promote to hardened app ECR
+      if: ${{ steps.validate.outputs.pass == 'true' }}
+      shell: bash
+      run: |
+        ACCOUNT=$(echo "${{ inputs.role-to-assume }}" | cut -d: -f5)
+        REPO="hardened-${{ inputs.app_name }}"
+        REGION="${{ inputs.aws-region }}"
+        SRC="${{ inputs.image }}"
+        TARGET="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:${GITHUB_SHA}"
+
+        echo "🚀 Promoting $SRC → $TARGET"
+        docker pull "$SRC"
+        aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
+        docker tag "$SRC" "$TARGET"
+        docker push "$TARGET"
+        echo "✅ Image successfully promoted to $TARGET"
+
+    - name: 🧩 Upload promotion logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: promote-logs
+        path: reports/
