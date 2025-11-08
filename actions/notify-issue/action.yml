@@ -23,7 +23,7 @@ runs:
         ISSUE_BODY="reports/final/issue.md"
         APP="${{ inputs.app_name }}"
 
-        # Create placeholder if not exists
+        # Create placeholder if summary file doesn't exist
         if [ ! -f "$SUMMARY_JSON" ]; then
           echo "⚠️ $SUMMARY_JSON not found; creating placeholder."
           echo '{"container_critical":0,"container_high":0,"code_high":0,"code_medium":0}' > "$SUMMARY_JSON"
