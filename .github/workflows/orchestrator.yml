@@ -27,6 +27,12 @@ jobs:
     steps:
       - name: Run Image Scan
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/scan-image@main
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+
 
   scan_code:
     name: 🧪 Code Scan
