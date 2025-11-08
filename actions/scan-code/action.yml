@@ -1,5 +1,5 @@
 name: Scan Application Source Code
-description: Run Semgrep static analysis and upload SARIF results
+description: Run Semgrep static analysis and upload SARIF results to GitHub Security Alerts
 
 inputs:
   language:
@@ -22,8 +22,8 @@ runs:
       run: |
         echo "🚀 Running Semgrep scan for ${{ inputs.language }}..."
         mkdir -p reports/generated
-        semgrep ci --sarif --output reports/generated/semgrep-report.sarif || true
-        echo "✅ Semgrep scan complete"
+        semgrep scan --config "p/ci" --sarif --output reports/generated/semgrep-report.sarif || true
+        echo "✅ Semgrep scan complete, SARIF report generated."
 
     - name: 📤 Upload SARIF Report to GitHub Security Alerts
       uses: github/codeql-action/upload-sarif@v3
