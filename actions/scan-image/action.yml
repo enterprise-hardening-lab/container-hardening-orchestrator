@@ -1,48 +1,55 @@
 name: Scan Container Image
-description: Perform vulnerability scan using Trivy via OIDC-based AWS auth
+description: Perform local vulnerability scan using Trivy on the freshly built image.
 
 inputs:
-  role-to-assume:
-    description: "IAM role ARN for GitHub OIDC authentication"
+  app_name:
+    description: "Application name (for tagging and reporting)"
     required: true
-  aws-region:
-    description: "AWS region"
+  base_image:
+    description: "Base OS image used for the container build (ubuntu | rhel | amazonlinux)"
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Configure AWS credentials (OIDC)
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ inputs.role-to-assume }}
-        aws-region: ${{ inputs.aws-region }}
-
-    - name: Authenticate to ECR
-      shell: bash
-      run: |
-        echo "🔑 Logging in to Amazon ECR..."
-        aws ecr get-login-password --region "${{ inputs.aws-region }}" \
-          | docker login --username AWS \
-          --password-stdin 661539128717.dkr.ecr.ap-south-1.amazonaws.com
-
-    - name: Install Trivy
+    - name: 📦 Install Trivy
       shell: bash
       run: |
         echo "📦 Installing Trivy..."
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
-    - name: Run Trivy scan
+    - name: 🚀 Run Trivy Image Scan
       shell: bash
       run: |
-        echo "🚀 Scanning hardened image..."
         mkdir -p reports/generated
-        IMAGE="661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-ubuntu:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
-        trivy image --severity HIGH,CRITICAL --format json --output reports/generated/trivy-scan.json "$IMAGE"
-        echo "✅ Scan completed: reports/generated/trivy-scan.json"
+        IMAGE="${{ inputs.app_name }}:${GITHUB_SHA}"
 
-    - name: Upload Trivy report
+        echo "🔍 Checking for local image..."
+        if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+          echo "❌ Local image $IMAGE not found."
+          exit 1
+        fi
+
+        echo "🚀 Running Trivy vulnerability scan on $IMAGE"
+        trivy image --severity HIGH,CRITICAL --format json --output reports/generated/trivy-scan.json "$IMAGE"
+        trivy image --severity HIGH,CRITICAL --format table --output reports/generated/trivy-scan.txt "$IMAGE"
+
+        # Optional: Generate HTML summary
+        if command -v jq >/dev/null 2>&1; then
+          echo "🧩 Creating HTML summary..."
+          jq -r '.Results[]?.Vulnerabilities[]? | "<tr><td>\(.VulnerabilityID)</td><td>\(.PkgName)</td><td>\(.InstalledVersion)</td><td>\(.Severity)</td></tr>"' reports/generated/trivy-scan.json \
+            | awk 'BEGIN{print "<html><body><table border=1><tr><th>CVE</th><th>Package</th><th>Version</th><th>Severity</th></tr>"} {print} END{print "</table></body></html>"}' \
+            > reports/generated/trivy-scan.html
+        fi
+
+        echo "✅ Scan completed for $IMAGE"
+        echo "📄 Reports: reports/generated/trivy-scan.json, trivy-scan.html"
+
+    - name: 📤 Upload Trivy Reports
       uses: actions/upload-artifact@v4
       with:
-        name: trivy-scan-report
-        path: reports/generated/trivy-scan.json
+        name: trivy-scan-reports
+        path: |
+          reports/generated/trivy-scan.json
+          reports/generated/trivy-scan.txt
+          reports/generated/trivy-scan.html
