@@ -22,8 +22,18 @@ runs:
       shell: bash
       run: |
         echo "📦 Loading image into local Docker daemon..."
-        docker load -i reports/generated/${{ inputs.app_name }}.tar
-        docker images | grep "${{ inputs.app_name }}" || echo "⚠️ Image load failed!"
+        IMAGE_TAR="reports/generated/image.tar"
+
+        if [ ! -f "$IMAGE_TAR" ]; then
+          echo "❌ ERROR: Built image artifact not found at $IMAGE_TAR"
+          echo "📂 Listing downloaded files for debug:"
+          ls -R reports/generated || true
+          exit 1
+        fi
+
+        docker load -i "$IMAGE_TAR"
+        echo "✅ Docker image loaded successfully:"
+        docker images | grep "${{ inputs.app_name }}" || echo "⚠️ Warning: image tag not found, but load succeeded."
 
     - name: 📦 Install Trivy
       shell: bash
@@ -31,6 +41,8 @@ runs:
         echo "📦 Installing Trivy..."
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
           | sudo sh -s -- -b /usr/local/bin
+        echo "✅ Trivy installed successfully."
+        trivy --version
 
     - name: 🚀 Run Trivy scan
       shell: bash
@@ -38,10 +50,12 @@ runs:
         echo "🚀 Running Trivy vulnerability scan on loaded image..."
         mkdir -p reports/generated
         IMAGE="${{ inputs.app_name }}:${GITHUB_SHA}"
+        echo "🔍 Scanning image: $IMAGE"
         trivy image --severity HIGH,CRITICAL \
           --format json \
           --output reports/generated/trivy-scan.json "$IMAGE"
         echo "✅ Scan completed: reports/generated/trivy-scan.json"
+        ls -lh reports/generated/trivy-scan.json
 
     - name: 📤 Upload Trivy report
       uses: actions/upload-artifact@v4
