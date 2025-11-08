@@ -94,6 +94,7 @@ jobs:
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/notify-issue@main
         with:
           app_name: ${{ inputs.app_name }}
+          personal_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
   promote_image:
     name: 🚀 Promote Verified Image to Hardened ECR

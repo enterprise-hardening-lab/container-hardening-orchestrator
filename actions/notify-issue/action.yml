@@ -5,6 +5,9 @@ inputs:
   app_name:
     description: "Application name"
     required: true
+  personal_token:
+    description: "GitHub Personal Access Token for creating issues"
+    required: true
 
 runs:
   using: "composite"
@@ -20,7 +23,7 @@ runs:
         ISSUE_BODY="reports/final/issue.md"
         APP="${{ inputs.app_name }}"
 
-        # If summary JSON missing, create placeholder
+        # Create placeholder if not exists
         if [ ! -f "$SUMMARY_JSON" ]; then
           echo "⚠️ $SUMMARY_JSON not found; creating placeholder."
           echo '{"container_critical":0,"container_high":0,"code_high":0,"code_medium":0}' > "$SUMMARY_JSON"
@@ -58,10 +61,8 @@ runs:
 
     - name: 📣 Create or Update GitHub Issue
       uses: actions/github-script@v7
-      env:
-        PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       with:
-        github-token: ${{ env.PERSONAL_ACCESS_TOKEN }}
+        github-token: ${{ inputs.personal_token }}
         script: |
           const fs = require('fs');
           const issueBody = fs.readFileSync('reports/final/issue.md', 'utf8');
