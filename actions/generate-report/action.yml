@@ -1,0 +1,13 @@
+name: ${{ github.workflow }} - ${{ github.job }}
+description: Placeholder for ${{ github.job }} stage in Container Hardening pipeline
+
+runs:
+  using: "composite"
+  steps:
+    - name: Echo Stage Start
+      shell: bash
+      run: echo "🚀 Running stage: ${{ github.job }}"
+
+    - name: Placeholder
+      shell: bash
+      run: echo "✅ Completed ${{ github.job }} stage (logic to be added later)"

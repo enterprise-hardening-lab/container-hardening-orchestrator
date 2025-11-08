@@ -1,0 +1,11 @@
+name: 🧩 Test Orchestrator Sequence
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-sequence:
+    uses: ./.github/workflows/orchestrator.yml
+    with:
+      app_name: "demo-service"
+      base_image: "ubuntu"

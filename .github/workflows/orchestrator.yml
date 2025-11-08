@@ -1,0 +1,46 @@
+name: 🧩 Container Hardening Orchestrator
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        required: true
+        type: string
+      base_image:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: 🏗️ Build Container Image
+    uses: ./actions/build
+
+  scan_image:
+    name: 🔍 Scan Image
+    needs: build
+    uses: ./actions/scan-image
+
+  scan_code:
+    name: 🧪 Code Scan
+    needs: scan_image
+    uses: ./actions/scan-code
+
+  hardening_check:
+    name: 🧰 Hardening Check
+    needs: scan_code
+    uses: ./actions/hardening-check
+
+  sign_attest:
+    name: 🔏 Sign & Attest
+    needs: hardening_check
+    uses: ./actions/sign-attest
+
+  generate_report:
+    name: 🧾 Generate HTML Report
+    needs: sign_attest
+    uses: ./actions/generate-report
+
+  notify_issue:
+    name: 📣 Notify via GitHub Issue
+    needs: generate_report
+    uses: ./actions/notify-issue
