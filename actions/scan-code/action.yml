@@ -1,5 +1,5 @@
 name: Scan Application Source Code
-description: Run Semgrep static analysis and upload SARIF to GitHub Security Alerts
+description: Run Semgrep static analysis and upload SARIF as artifact (multi-repo mode)
 
 inputs:
   language:
@@ -10,7 +10,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # Checkout the application repository code
+    # Checkout the app repository code
     - name: 🧩 Checkout code
       uses: actions/checkout@v4
 
@@ -31,13 +31,7 @@ runs:
         semgrep scan --config "p/ci" --sarif --output reports/generated/semgrep-report.sarif || true
         echo "✅ Semgrep scan complete, SARIF report generated at reports/generated/semgrep-report.sarif"
 
-    # Upload SARIF results to GitHub Security tab
-    - name: 📤 Upload SARIF Report to GitHub Security Alerts
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: reports/generated/semgrep-report.sarif
-
-    # Upload SARIF file as a downloadable artifact for governance tracking
+    # Upload SARIF file as a downloadable artifact (no direct GitHub upload here)
     - name: 📦 Upload Semgrep Report as Artifact
       uses: actions/upload-artifact@v4
       with:
