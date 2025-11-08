@@ -11,16 +11,11 @@ on:
         description: "Base OS image (ubuntu | rhel | amazonlinux)"
         required: true
         type: string
-      image:
-        description: "Full image reference to use for signing/attestation (optional)"
-        required: false
-        type: string
-        default: "661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-ubuntu:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
 
 permissions:
   id-token: write
   contents: read
-  issues: write
+  security-events: write
 
 jobs:
   build:
@@ -34,15 +29,9 @@ jobs:
     name: 🔍 Scan Image
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - name: Run Image Scan
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/scan-image@main
-        with:
-          role-to-assume: arn:aws:iam::661539128717:role/GitHubOIDC-ECRPushRole
-          aws-region: ap-south-1
 
   scan_code:
     name: 🧪 Code Scan
@@ -64,16 +53,9 @@ jobs:
     name: 🔏 Sign & Attest
     runs-on: ubuntu-latest
     needs: hardening_check
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - name: Run Sign & Attest
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/sign-attest@main
-        with:
-          image: ${{ inputs.image }}
-          role-to-assume: arn:aws:iam::661539128717:role/GitHubOIDC-ECRPushRole
-          aws-region: ap-south-1
 
   generate_report:
     name: 🧾 Generate Report
@@ -82,27 +64,20 @@ jobs:
     steps:
       - name: Run Generate Report
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/generate-report@main
-        with:
-          app_name: ${{ inputs.app_name }}
-          base_image: ${{ inputs.base_image }}
-
 
   notify_issue:
     name: 📣 Notify GitHub Issue
     runs-on: ubuntu-latest
     needs: generate_report
     steps:
-      - name: Create/Update Issue
+      - name: Run Notify Issue
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/notify-issue@main
-        with:
-          app_name: ${{ inputs.app_name }}
-          base_image: ${{ inputs.base_image }}
 
   promote_image:
     name: 🚀 Promote to Trusted ECR
     runs-on: ubuntu-latest
-    needs: notify_issue         # ensures all prior stages complete
-    if: success()               # run only if all checks passed
+    needs: notify_issue
+    if: success()
     permissions:
       id-token: write
       contents: read
@@ -111,11 +86,9 @@ jobs:
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/promote-image@main
         with:
           app_name: ${{ inputs.app_name }}
-          image: 661539128717.dkr.ecr.ap-south-1.amazonaws.com/${{ inputs.app_name }}:${{ github.sha }}
           role-to-assume: arn:aws:iam::661539128717:role/GitHubOIDC-ECRPushRole
           aws-region: ap-south-1
           trivy_summary: reports/generated/trivy-scan.json
           semgrep_summary: reports/generated/semgrep-report.sarif
           max_critical: 0
           max_high: 5
-

@@ -1,12 +1,9 @@
 name: Promote Hardened Image
-description: Push image to trusted ECR only if all security checks passed.
+description: Push image to trusted hardened ECR only if all security checks passed.
 
 inputs:
   app_name:
     description: "Application name"
-    required: true
-  image:
-    description: "Source image tag in staging ECR"
     required: true
   role-to-assume:
     description: "AWS IAM role ARN (OIDC)"
@@ -38,20 +35,21 @@ runs:
     - name: 🧩 Checkout repo
       uses: actions/checkout@v4
 
-    - name: 🔍 Validate scan thresholds
+    - name: 🔍 Validate security thresholds
       id: validate
       shell: bash
       run: |
         echo "📊 Evaluating security thresholds..."
         CRIT=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "${{ inputs.trivy_summary }}" 2>/dev/null || echo 0)
         HIGH=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "${{ inputs.trivy_summary }}" 2>/dev/null || echo 0)
-
         echo "Found CRITICAL=$CRIT, HIGH=$HIGH"
+
         if [ "$CRIT" -gt "${{ inputs.max_critical }}" ] || [ "$HIGH" -gt "${{ inputs.max_high }}" ]; then
           echo "❌ Security threshold breached (Critical=$CRIT, High=$HIGH)."
           echo "pass=false" >> $GITHUB_OUTPUT
           exit 1
         fi
+
         echo "✅ Security thresholds passed."
         echo "pass=true" >> $GITHUB_OUTPUT
 
@@ -62,25 +60,27 @@ runs:
         role-to-assume: ${{ inputs.role-to-assume }}
         aws-region: ${{ inputs.aws-region }}
 
-    - name: 📦 Promote to hardened app ECR
+    - name: 📦 Promote locally built image to hardened ECR
       if: ${{ steps.validate.outputs.pass == 'true' }}
       shell: bash
       run: |
         ACCOUNT=$(echo "${{ inputs.role-to-assume }}" | cut -d: -f5)
         REGION="${{ inputs.aws-region }}"
         REPO="hardened-${{ inputs.app_name }}"
-        SRC="${{ inputs.image }}"
+        LOCAL_TAG="${{ inputs.app_name }}:${GITHUB_SHA}"
         TARGET="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:${GITHUB_SHA}"
 
         echo "🔑 Logging into ECR..."
+        aws ecr describe-repositories --repository-names "$REPO" --region "$REGION" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$REPO" --region "$REGION"
+
         aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
 
-        echo "🚀 Promoting $SRC → $TARGET"
-        docker pull "$SRC"
-        docker tag "$SRC" "$TARGET"
+        echo "🚀 Tagging and pushing locally built image → $TARGET"
+        docker tag "$LOCAL_TAG" "$TARGET"
         docker push "$TARGET"
-        echo "✅ Image successfully promoted to $TARGET"
 
+        echo "✅ Image successfully promoted to hardened ECR: $TARGET"
 
     - name: 🧩 Upload promotion logs
       if: always()
