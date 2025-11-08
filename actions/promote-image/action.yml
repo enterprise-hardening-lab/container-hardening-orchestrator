@@ -67,17 +67,20 @@ runs:
       shell: bash
       run: |
         ACCOUNT=$(echo "${{ inputs.role-to-assume }}" | cut -d: -f5)
-        REPO="hardened-${{ inputs.app_name }}"
         REGION="${{ inputs.aws-region }}"
+        REPO="hardened-${{ inputs.app_name }}"
         SRC="${{ inputs.image }}"
         TARGET="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:${GITHUB_SHA}"
 
+        echo "🔑 Logging into ECR..."
+        aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
+
         echo "🚀 Promoting $SRC → $TARGET"
         docker pull "$SRC"
-        aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
         docker tag "$SRC" "$TARGET"
         docker push "$TARGET"
         echo "✅ Image successfully promoted to $TARGET"
+
 
     - name: 🧩 Upload promotion logs
       if: always()
