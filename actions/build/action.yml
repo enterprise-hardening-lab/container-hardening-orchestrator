@@ -1,5 +1,5 @@
 name: Build Container Image
-description: Build the application container using the hardened base image
+description: Build the application container using the hardened base image and export it as an artifact
 
 inputs:
   app_name:
@@ -64,7 +64,22 @@ runs:
         echo "✅ Successfully built local image: $IMAGE"
         echo "📄 Build log saved to reports/generated/docker-build.log"
 
-    - name: 📤 Upload Build Metadata
+    - name: 📦 Save image as artifact
+      shell: bash
+      run: |
+        TAG="${GITHUB_SHA}"
+        IMAGE="${{ inputs.app_name }}:${TAG}"
+        echo "📦 Saving image locally as TAR..."
+        docker save -o reports/generated/${{ inputs.app_name }}.tar "$IMAGE"
+        ls -lh reports/generated/
+
+    - name: 📤 Upload built image artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: built-image
+        path: reports/generated/${{ inputs.app_name }}.tar
+
+    - name: 📤 Upload Build Logs
       uses: actions/upload-artifact@v4
       with:
         name: build-logs
