@@ -89,6 +89,9 @@ jobs:
     name: 📣 Notify GitHub Issue
     runs-on: ubuntu-latest
     needs: generate_report
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Run Notify Issue
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/notify-issue@main
