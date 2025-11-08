@@ -47,13 +47,20 @@ jobs:
       - name: 🧹 Delete old artifact if exists
         run: |
           echo "Checking for existing 'built-image' artifact..."
-          artifacts=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[].name')
+          artifacts=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[].name' || true)
+          
           if echo "$artifacts" | grep -q "^built-image$"; then
             echo "Existing artifact found. Deleting..."
-            id=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name==\"built-image\") | .id')
-            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+            id=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name=="built-image") | .id' || true)
+            
+            if [ -n "$id" ]; then
+              gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+              echo "✅ Deleted old artifact ID: $id"
+            else
+              echo "⚠️ Artifact found by name but ID not resolved."
+            fi
           else
-            echo "No old artifact found."
+            echo "ℹ️ No old artifact named 'built-image' found."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.personal_token }}
