@@ -4,9 +4,11 @@ on:
   workflow_call:
     inputs:
       app_name:
+        description: "Application name triggering this pipeline"
         required: true
         type: string
       base_image:
+        description: "Base OS image (ubuntu | rhel | amazonlinux)"
         required: true
         type: string
 
@@ -15,7 +17,7 @@ jobs:
     name: 🏗️ Build Container Image
     runs-on: ubuntu-latest
     steps:
-      - name: Run build action
+      - name: 🧩 Build stage
         uses: ./actions/build
 
   scan_image:
@@ -23,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Run scan-image action
+      - name: 🔍 Run image scan
         uses: ./actions/scan-image
 
   scan_code:
@@ -31,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: scan_image
     steps:
-      - name: Run scan-code action
+      - name: 🧪 Run code scan
         uses: ./actions/scan-code
 
   hardening_check:
@@ -39,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: scan_code
     steps:
-      - name: Run hardening-check action
+      - name: 🧰 Run hardening check
         uses: ./actions/hardening-check
 
   sign_attest:
@@ -47,21 +49,21 @@ jobs:
     runs-on: ubuntu-latest
     needs: hardening_check
     steps:
-      - name: Run sign-attest action
+      - name: 🔏 Sign and attest
         uses: ./actions/sign-attest
 
   generate_report:
-    name: 🧾 Generate HTML Report
+    name: 🧾 Generate Report
     runs-on: ubuntu-latest
     needs: sign_attest
     steps:
-      - name: Run generate-report action
+      - name: 🧾 Generate consolidated report
         uses: ./actions/generate-report
 
   notify_issue:
-    name: 📣 Notify via GitHub Issue
+    name: 📣 Notify GitHub Issue
     runs-on: ubuntu-latest
     needs: generate_report
     steps:
-      - name: Run notify-issue action
+      - name: 📣 Notify GitHub issue
         uses: ./actions/notify-issue
