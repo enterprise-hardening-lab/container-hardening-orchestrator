@@ -37,7 +37,7 @@ jobs:
           role-to-assume: arn:aws:iam::661539128717:role/GitHubOIDC-ECRPushRole
           aws-region: ap-south-1
 
-      # ✅ Save built image for later reuse (so we only push at the end)
+      # ✅ Save built image for reuse later
       - name: 🐳 Save built image as artifact
         run: |
           echo "Saving image ${{ inputs.app_name }}:${{ github.sha }} to image.tar..."
