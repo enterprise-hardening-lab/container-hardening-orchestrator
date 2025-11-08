@@ -22,9 +22,10 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
 
       - name: Run Build Action
-        uses: ./actions/build
+        uses: ./_orchestrator/actions/build
 
   scan_image:
     name: 🔍 Scan Image
@@ -36,8 +37,9 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
       - name: Run Scan Image
-        uses: ./actions/scan-image
+        uses: ./_orchestrator/actions/scan-image
 
   scan_code:
     name: 🧪 Code Scan
@@ -49,8 +51,9 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
       - name: Run Scan Code
-        uses: ./actions/scan-code
+        uses: ./_orchestrator/actions/scan-code
 
   hardening_check:
     name: 🧰 Hardening Check
@@ -62,8 +65,9 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
       - name: Run Hardening Check
-        uses: ./actions/hardening-check
+        uses: ./_orchestrator/actions/hardening-check
 
   sign_attest:
     name: 🔏 Sign & Attest
@@ -75,8 +79,9 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
       - name: Run Sign & Attest
-        uses: ./actions/sign-attest
+        uses: ./_orchestrator/actions/sign-attest
 
   generate_report:
     name: 🧾 Generate Report
@@ -88,8 +93,9 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
       - name: Run Generate Report
-        uses: ./actions/generate-report
+        uses: ./_orchestrator/actions/generate-report
 
   notify_issue:
     name: 📣 Notify GitHub Issue
@@ -101,5 +107,6 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
+          path: _orchestrator
       - name: Run Notify Issue
-        uses: ./actions/notify-issue
+        uses: ./_orchestrator/actions/notify-issue
