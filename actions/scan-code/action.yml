@@ -4,10 +4,14 @@ description: Generic stage for Container Hardening pipeline
 runs:
   using: "composite"
   steps:
-    - name: Start Stage
+    - name: Start stage
       shell: bash
-      run: echo "🚀 Starting stage: ${GITHUB_JOB}"
+      run: |
+        echo "🚀 Starting stage: ${GITHUB_JOB}"
+        echo "Repository: ${GITHUB_REPOSITORY}"
+        echo "Workflow: ${GITHUB_WORKFLOW}"
 
-    - name: Complete Stage
+    - name: Complete stage
       shell: bash
-      run: echo "✅ Completed stage: ${GITHUB_JOB}"
+      run: |
+        echo "✅ Completed stage: ${GITHUB_JOB}"
