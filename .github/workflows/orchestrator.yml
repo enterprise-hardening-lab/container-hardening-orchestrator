@@ -11,6 +11,10 @@ on:
         description: "Base OS image (ubuntu | rhel | amazonlinux)"
         required: true
         type: string
+      personal_token:                      # ✅ NEW
+        description: "GitHub Personal Access Token"
+        required: true
+        type: string
 
 permissions:
   id-token: write
