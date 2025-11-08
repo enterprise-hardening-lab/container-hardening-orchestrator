@@ -1,17 +1,37 @@
-name: Stage Action
-description: Generic stage for Container Hardening pipeline
+name: Scan Application Source Code
+description: Run Semgrep static analysis and upload SARIF results
+
+inputs:
+  language:
+    description: "Primary language for Semgrep rules (e.g., python, java, javascript)"
+    required: false
+    default: "python"
 
 runs:
   using: "composite"
   steps:
-    - name: Start stage
+    - name: 🧩 Install Semgrep
       shell: bash
       run: |
-        echo "🚀 Starting stage: ${GITHUB_JOB}"
-        echo "Repository: ${GITHUB_REPOSITORY}"
-        echo "Workflow: ${GITHUB_WORKFLOW}"
+        echo "📦 Installing Semgrep..."
+        pip install --upgrade pip >/dev/null
+        pip install semgrep
 
-    - name: Complete stage
+    - name: 🔍 Run Semgrep Scan
       shell: bash
       run: |
-        echo "✅ Completed stage: ${GITHUB_JOB}"
+        echo "🚀 Running Semgrep scan for ${{ inputs.language }}..."
+        mkdir -p reports/generated
+        semgrep ci --sarif --output reports/generated/semgrep-report.sarif || true
+        echo "✅ Semgrep scan complete"
+
+    - name: 📤 Upload SARIF Report to GitHub Security Alerts
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: reports/generated/semgrep-report.sarif
+
+    - name: 📦 Upload Semgrep Report as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: semgrep-report
+        path: reports/generated/semgrep-report.sarif
