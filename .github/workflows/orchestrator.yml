@@ -101,7 +101,7 @@ jobs:
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/notify-issue@main
         with:
           app_name: ${{ inputs.app_name }}
-          personal_token: ${{ secrets.personal_token }}   # ✅ Correct: use secret passed from caller
+          personal_token: ${{ secrets.personal_token }}   # ✅ Correct reference
 
   promote_image:
     name: 🚀 Promote Verified Image to Hardened ECR
