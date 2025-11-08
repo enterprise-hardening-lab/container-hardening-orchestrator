@@ -22,7 +22,8 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run build stage
+
+      - name: Run Build Action
         uses: ./actions/build
 
   scan_image:
@@ -35,7 +36,7 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run image scan
+      - name: Run Scan Image
         uses: ./actions/scan-image
 
   scan_code:
@@ -48,7 +49,7 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run code scan
+      - name: Run Scan Code
         uses: ./actions/scan-code
 
   hardening_check:
@@ -61,7 +62,7 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run hardening check
+      - name: Run Hardening Check
         uses: ./actions/hardening-check
 
   sign_attest:
@@ -74,7 +75,7 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run sign and attest
+      - name: Run Sign & Attest
         uses: ./actions/sign-attest
 
   generate_report:
@@ -87,7 +88,7 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run generate report
+      - name: Run Generate Report
         uses: ./actions/generate-report
 
   notify_issue:
@@ -100,5 +101,5 @@ jobs:
         with:
           repository: enterprise-hardening-lab/container-hardening-orchestrator
           ref: main
-      - name: Run notify issue
+      - name: Run Notify Issue
         uses: ./actions/notify-issue
