@@ -1,24 +1,48 @@
 name: Build Container Image
-description: Build container image using hardened base image
+description: Build the application container using the hardened base image
+
+inputs:
+  app_name:
+    description: "Application name"
+    required: true
+  base_image:
+    description: "Base OS image used for build (ubuntu | rhel | amazonlinux)"
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Checkout app repository
-      uses: actions/checkout@v4
-
-    - name: Build Docker image
+    - name: 🧱 Set up Docker build environment
       shell: bash
       run: |
-        echo "🏗️ Building container image for $GITHUB_REPOSITORY"
-        echo "Base image: 661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-ubuntu:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
-
-        # Simulate build process for demo (replace with docker build later)
+        echo "🔧 Preparing Docker build context..."
+        echo "APP_NAME=${{ inputs.app_name }}"
+        echo "BASE_IMAGE=${{ inputs.base_image }}"
         mkdir -p reports/generated
-        echo "Image build completed at $(date)" > reports/generated/build-summary.txt
 
-    - name: Upload build summary
+    - name: 🧰 Build image from hardened base
+      shell: bash
+      run: |
+        set -e
+        TAG="${GITHUB_SHA}"
+        IMAGE="${{ inputs.app_name }}:${TAG}"
+        BASE_IMAGE_PATH="661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-${{ inputs.base_image }}:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
+
+        echo "🚀 Building local image: $IMAGE"
+        echo "🧩 Using hardened base: $BASE_IMAGE_PATH"
+
+        # Enable plain text progress for full build logs
+        DOCKER_BUILDKIT=1 docker build \
+          --progress=plain \
+          --no-cache \
+          --build-arg BASE_IMAGE=$BASE_IMAGE_PATH \
+          -t "$IMAGE" . | tee reports/generated/docker-build.log
+
+        echo "✅ Successfully built local image: $IMAGE"
+        echo "📄 Build log saved to reports/generated/docker-build.log"
+
+    - name: 📤 Upload Build Metadata
       uses: actions/upload-artifact@v4
       with:
-        name: build-summary
-        path: reports/generated/build-summary.txt
+        name: build-logs
+        path: reports/generated/docker-build.log
