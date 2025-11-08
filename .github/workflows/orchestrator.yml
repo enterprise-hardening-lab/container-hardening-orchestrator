@@ -24,8 +24,13 @@ jobs:
           ref: main
           path: _orchestrator
 
+      - name: Verify checkout structure
+        run: |
+          pwd
+          ls -R ..
+
       - name: Run Build Action
-        uses: ./_orchestrator/actions/build
+        uses: ../_orchestrator/actions/build
 
   scan_image:
     name: 🔍 Scan Image
@@ -39,7 +44,7 @@ jobs:
           ref: main
           path: _orchestrator
       - name: Run Scan Image
-        uses: ./_orchestrator/actions/scan-image
+        uses: ../_orchestrator/actions/scan-image
 
   scan_code:
     name: 🧪 Code Scan
@@ -53,7 +58,7 @@ jobs:
           ref: main
           path: _orchestrator
       - name: Run Scan Code
-        uses: ./_orchestrator/actions/scan-code
+        uses: ../_orchestrator/actions/scan-code
 
   hardening_check:
     name: 🧰 Hardening Check
@@ -67,7 +72,7 @@ jobs:
           ref: main
           path: _orchestrator
       - name: Run Hardening Check
-        uses: ./_orchestrator/actions/hardening-check
+        uses: ../_orchestrator/actions/hardening-check
 
   sign_attest:
     name: 🔏 Sign & Attest
@@ -81,7 +86,7 @@ jobs:
           ref: main
           path: _orchestrator
       - name: Run Sign & Attest
-        uses: ./_orchestrator/actions/sign-attest
+        uses: ../_orchestrator/actions/sign-attest
 
   generate_report:
     name: 🧾 Generate Report
@@ -95,7 +100,7 @@ jobs:
           ref: main
           path: _orchestrator
       - name: Run Generate Report
-        uses: ./_orchestrator/actions/generate-report
+        uses: ../_orchestrator/actions/generate-report
 
   notify_issue:
     name: 📣 Notify GitHub Issue
@@ -109,4 +114,4 @@ jobs:
           ref: main
           path: _orchestrator
       - name: Run Notify Issue
-        uses: ./_orchestrator/actions/notify-issue
+        uses: ../_orchestrator/actions/notify-issue
