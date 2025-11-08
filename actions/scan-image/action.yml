@@ -1,17 +1,30 @@
-name: Stage Action
-description: Generic stage for Container Hardening pipeline
+name: Scan Container Image
+description: Perform vulnerability scan using Trivy and upload results
 
 runs:
   using: "composite"
   steps:
-    - name: Start stage
+    - name: Set up Trivy
       shell: bash
       run: |
-        echo "🚀 Starting stage: ${GITHUB_JOB}"
-        echo "Repository: ${GITHUB_REPOSITORY}"
-        echo "Workflow: ${GITHUB_WORKFLOW}"
+        echo "🔍 Installing Trivy..."
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
-    - name: Complete stage
+    - name: Run Trivy Image Scan
       shell: bash
       run: |
-        echo "✅ Completed stage: ${GITHUB_JOB}"
+        echo "🚀 Running Trivy vulnerability scan on hardened base image"
+        mkdir -p reports/generated
+
+        # Change to your real image name or built tag if available
+        IMAGE="661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-ubuntu:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
+
+        trivy image --severity HIGH,CRITICAL --format json --output reports/generated/trivy-scan.json "$IMAGE"
+
+        echo "✅ Scan completed: reports/generated/trivy-scan.json"
+
+    - name: Upload Trivy Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-scan-report
+        path: reports/generated/trivy-scan.json
