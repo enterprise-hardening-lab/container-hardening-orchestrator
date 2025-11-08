@@ -11,10 +11,10 @@ on:
         description: "Base OS image (ubuntu | rhel | amazonlinux)"
         required: true
         type: string
-      personal_token:                      # ✅ NEW
+    secrets:
+      personal_token:
         description: "GitHub Personal Access Token"
         required: true
-        type: string
 
 permissions:
   id-token: write
@@ -101,7 +101,7 @@ jobs:
         uses: enterprise-hardening-lab/container-hardening-orchestrator/actions/notify-issue@main
         with:
           app_name: ${{ inputs.app_name }}
-          personal_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          personal_token: ${{ secrets.personal_token }}   # ✅ Correct: use secret passed from caller
 
   promote_image:
     name: 🚀 Promote Verified Image to Hardened ECR
