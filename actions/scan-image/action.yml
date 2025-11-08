@@ -1,52 +1,47 @@
 name: Scan Container Image
-description: Perform vulnerability scan using Trivy and upload results
+description: Perform vulnerability scan using Trivy via OIDC-based AWS auth
 
 inputs:
-  aws-access-key-id:
-    description: "AWS Access Key ID"
-    required: true
-  aws-secret-access-key:
-    description: "AWS Secret Access Key"
+  role-to-assume:
+    description: "IAM role ARN for GitHub OIDC authentication"
     required: true
   aws-region:
-    description: "AWS Region"
+    description: "AWS region"
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Export AWS credentials
-      shell: bash
-      run: |
-        echo "🌍 Exporting AWS credentials..."
-        echo "AWS_ACCESS_KEY_ID=${{ inputs.aws-access-key-id }}" >> $GITHUB_ENV
-        echo "AWS_SECRET_ACCESS_KEY=${{ inputs.aws-secret-access-key }}" >> $GITHUB_ENV
-        echo "AWS_REGION=${{ inputs.aws-region }}" >> $GITHUB_ENV
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.aws-region }}
 
     - name: Authenticate to ECR
       shell: bash
       run: |
         echo "🔑 Logging in to Amazon ECR..."
-        aws ecr get-login-password --region "${AWS_REGION}" \
+        aws ecr get-login-password --region "${{ inputs.aws-region }}" \
           | docker login --username AWS \
           --password-stdin 661539128717.dkr.ecr.ap-south-1.amazonaws.com
 
-    - name: Set up Trivy
+    - name: Install Trivy
       shell: bash
       run: |
         echo "📦 Installing Trivy..."
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
-    - name: Run Trivy Image Scan
+    - name: Run Trivy scan
       shell: bash
       run: |
-        echo "🚀 Running Trivy vulnerability scan on hardened base image"
+        echo "🚀 Scanning hardened image..."
         mkdir -p reports/generated
         IMAGE="661539128717.dkr.ecr.ap-south-1.amazonaws.com/hardened-ubuntu:ubuntu-22.04-cis1.4-20251107170841-6cbd6dc"
         trivy image --severity HIGH,CRITICAL --format json --output reports/generated/trivy-scan.json "$IMAGE"
         echo "✅ Scan completed: reports/generated/trivy-scan.json"
 
-    - name: Upload Trivy Report
+    - name: Upload Trivy report
       uses: actions/upload-artifact@v4
       with:
         name: trivy-scan-report
