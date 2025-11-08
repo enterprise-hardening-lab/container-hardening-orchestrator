@@ -12,6 +12,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: 🧱 Checkout application repository
+      uses: actions/checkout@v4
+      with:
+        # Pull the app repo that triggered this workflow
+        repository: ${{ github.repository }}
+        ref: ${{ github.ref }}
+
     - name: 🧱 Set up Docker build environment
       shell: bash
       run: |
@@ -31,7 +38,6 @@ runs:
         echo "🚀 Building local image: $IMAGE"
         echo "🧩 Using hardened base: $BASE_IMAGE_PATH"
 
-        # Enable plain text progress for full build logs
         DOCKER_BUILDKIT=1 docker build \
           --progress=plain \
           --no-cache \
