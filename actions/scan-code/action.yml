@@ -1,5 +1,5 @@
 name: Scan Application Source Code
-description: Run Semgrep static analysis and upload SARIF results to GitHub Security Alerts
+description: Run Semgrep static analysis and upload SARIF to GitHub Security Alerts
 
 inputs:
   language:
@@ -10,6 +10,11 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Checkout the application repository code
+    - name: 🧩 Checkout code
+      uses: actions/checkout@v4
+
+    # Install Semgrep
     - name: 🧩 Install Semgrep
       shell: bash
       run: |
@@ -17,19 +22,22 @@ runs:
         pip install --upgrade pip >/dev/null
         pip install semgrep
 
+    # Run Semgrep scan and generate SARIF output
     - name: 🔍 Run Semgrep Scan
       shell: bash
       run: |
         echo "🚀 Running Semgrep scan for ${{ inputs.language }}..."
         mkdir -p reports/generated
         semgrep scan --config "p/ci" --sarif --output reports/generated/semgrep-report.sarif || true
-        echo "✅ Semgrep scan complete, SARIF report generated."
+        echo "✅ Semgrep scan complete, SARIF report generated at reports/generated/semgrep-report.sarif"
 
+    # Upload SARIF results to GitHub Security tab
     - name: 📤 Upload SARIF Report to GitHub Security Alerts
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: reports/generated/semgrep-report.sarif
 
+    # Upload SARIF file as a downloadable artifact for governance tracking
     - name: 📦 Upload Semgrep Report as Artifact
       uses: actions/upload-artifact@v4
       with:
